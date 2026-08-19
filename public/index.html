@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Do Baatein | Private chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section id="auth-view" class="auth-layout">
+      <div class="intro">
+        <p class="eyebrow">PRIVATE / SIMPLE / HUMAN</p>
+        <h1>Do baatein,<br><span>bilkul private.</span></h1>
+        <p class="intro-copy">Apne kisi khaas insaan ke saath seedhi, saaf aur realtime chat. Bas username banao aur baat shuru karo.</p>
+        <div class="privacy-note"><span class="lock-icon">⌁</span><span>Aapke messages isi private room mein save hote hain.</span></div>
+      </div>
+      <div class="auth-panel">
+        <div class="brand-mark">DB</div>
+        <h2 id="auth-title">Welcome back</h2>
+        <p id="auth-subtitle">Apne account se login karein.</p>
+        <form id="auth-form">
+          <label>Username<input id="username" autocomplete="username" required minlength="3" maxlength="24" placeholder="jaise: rahul_07" /></label>
+          <label>Password<input id="password" type="password" autocomplete="current-password" required minlength="6" placeholder="kam se kam 6 characters" /></label>
+          <button class="primary-btn" type="submit"><span id="auth-action">Login karein</span><span>→</span></button>
+        </form>
+        <p id="auth-error" class="form-error" role="alert"></p>
+        <button id="toggle-auth" class="text-btn" type="button">Naya account banayein</button>
+      </div>
+    </section>
+
+    <section id="chat-view" class="chat-layout hidden">
+      <header class="topbar">
+        <div class="brand"><div class="brand-mark small">DB</div><div><strong>Do Baatein</strong><small>private chat room</small></div></div>
+        <div class="user-menu"><span class="online-dot"></span><span id="current-user"></span><button id="logout" class="icon-btn" title="Logout">↪</button></div>
+      </header>
+      <div class="chat-main">
+        <aside class="chat-aside"><p class="eyebrow">YOUR SPACE</p><h2>Ek room.<br>Do log.</h2><p class="aside-copy">Link share karke apne person ko bulao. Jo yahan likha jayega, wahi is private room mein rahega.</p><div class="room-status"><span class="pulse"></span><span id="presence-text">Connecting...</span></div></aside>
+        <section class="conversation"><div class="conversation-head"><div><p class="eyebrow">CONVERSATION</p><h2>Bas tum dono</h2></div><span class="secure-label">● private room</span></div><div id="messages" class="messages"></div><form id="message-form" class="composer"><input id="message-input" autocomplete="off" maxlength="1000" placeholder="Apna message likhein..." /><button class="send-btn" title="Send" type="submit">↑</button></form></section>
+      </div>
+    </section>
+  </main>
+  <script src="/socket.io/socket.io.js"></script><script src="/app.js"></script>
+</body>
+</html>
