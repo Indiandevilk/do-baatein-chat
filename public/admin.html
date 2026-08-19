@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login activity</title><link rel="stylesheet" href="/styles.css"></head>
+<body><main class="admin-page"><section class="auth-panel"><div class="brand-mark">DB</div><h1>Login activity</h1><p>Sirf login aur logout time.</p><form id="admin-form"><label>Admin password<input id="admin-password" type="password" required></label><button class="primary-btn" type="submit">Show activity</button></form><p id="admin-error" class="form-error"></p><div id="activity"></div></section></main><script>
+const form=document.querySelector('#admin-form');const error=document.querySelector('#admin-error');const activity=document.querySelector('#activity');
+form.addEventListener('submit',async event=>{event.preventDefault();error.textContent='';const response=await fetch('/api/admin/login-activity',{headers:{'x-admin-password':document.querySelector('#admin-password').value}});const data=await response.json();if(!response.ok){error.textContent=data.error;return}activity.innerHTML=Object.entries(data).map(([user,times])=>`<p><strong>${user}</strong><br>Login: ${times.loginAt?new Date(times.loginAt).toLocaleString():'-'}<br>Logout: ${times.logoutAt?new Date(times.logoutAt).toLocaleString():'Abhi login hai'}</p>`).join('');});
+</script></body></html>

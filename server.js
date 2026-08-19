@@ -12,7 +12,9 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const PUSH_FILE = path.join(DATA_DIR, 'push-subscriptions.json');
+const ACTIVITY_FILE = path.join(DATA_DIR, 'login-activity.json');
 const SESSION_SECRET = process.env.SESSION_SECRET || 'do-baatein-change-this-secret';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) webpush.setVapidDetails('mailto:indiandevilk@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -54,6 +56,7 @@ function cleanName(name) { return String(name || '').trim().toLowerCase().replac
 let users = readJson(USERS_FILE, []);
 let messages = readJson(MESSAGES_FILE, []);
 let pushSubscriptions = readJson(PUSH_FILE, {});
+let loginActivity = readJson(ACTIVITY_FILE, {});
 const sessions = new Map(Object.entries(readJson(SESSIONS_FILE, {})));
 const onlineUsers = new Map();
 const app = express();
@@ -80,6 +83,19 @@ function setSession(res, username) {
   writeJson(SESSIONS_FILE, Object.fromEntries(sessions));
   res.setHeader('Set-Cookie', `session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=315360000`);
 }
+function recordLogin(username) {
+  loginActivity[username] = { loginAt: new Date().toISOString(), logoutAt: null };
+  writeJson(ACTIVITY_FILE, loginActivity);
+}
+function recordLogout(username) {
+  if (!loginActivity[username]) loginActivity[username] = { loginAt: null, logoutAt: null };
+  loginActivity[username].logoutAt = new Date().toISOString();
+  writeJson(ACTIVITY_FILE, loginActivity);
+}
+function requireAdmin(req, res, next) {
+  if (!ADMIN_PASSWORD || req.headers['x-admin-password'] !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Admin access required.' });
+  next();
+}
 
 app.post('/api/register', (req, res) => {
   const username = cleanName(req.body.username);
@@ -91,6 +107,7 @@ app.post('/api/register', (req, res) => {
   users.push({ username, password: hashPassword(password), createdAt: new Date().toISOString() });
   writeJson(USERS_FILE, users);
   setSession(res, username);
+  recordLogin(username);
   res.json({ username });
 });
 
@@ -99,11 +116,13 @@ app.post('/api/login', (req, res) => {
   const user = users.find(item => item.username === username);
   if (!user || !verifyPassword(String(req.body.password || ''), user.password)) return res.status(401).json({ error: 'Username or password is incorrect.' });
   setSession(res, username);
+  recordLogin(username);
   res.json({ username });
 });
 
 app.post('/api/logout', requireUser, (req, res) => {
   const token = parseCookies(req.headers.cookie).session;
+  recordLogout(req.user.username);
   sessions.delete(token);
   writeJson(SESSIONS_FILE, Object.fromEntries(sessions));
   res.setHeader('Set-Cookie', 'session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
@@ -111,6 +130,7 @@ app.post('/api/logout', requireUser, (req, res) => {
 });
 app.post('/api/leave', requireUser, (req, res) => {
   const token = parseCookies(req.headers.cookie).session;
+  recordLogout(req.user.username);
   sessions.delete(token);
   writeJson(SESSIONS_FILE, Object.fromEntries(sessions));
   res.setHeader('Set-Cookie', 'session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
@@ -130,6 +150,7 @@ app.post('/api/push/subscribe', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 app.get('/health', (req, res) => res.json({ ok: true }));
+app.get('/api/admin/login-activity', requireAdmin, (req, res) => res.json(loginActivity));
 
 io.use((socket, next) => {
   const token = parseCookies(socket.handshake.headers.cookie).session;

@@ -26,3 +26,5 @@ The app stores users and messages in `data/`. Render's free service can lose thi
 Login sessions use a long-lived signed cookie, so a normal server update does not ask users to log in again. Only the explicit **Logout** button clears a login session. Messages stay saved when either user logs out or closes the website.
 
 For phone notifications, set `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` in the Render service environment. These are generated with `web-push generate-vapid-keys`; users must allow notifications after opening the site.
+
+Login activity is available at `/admin.html`. Set the `ADMIN_PASSWORD` environment variable in Render first. The page shows only each account's latest login time and logout time; it does not collect IP, device, password, or message details.
