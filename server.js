@@ -58,6 +58,12 @@ function setSession(res, username) {
   sessions.set(token, username);
   res.setHeader('Set-Cookie', `session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`);
 }
+function removeUserMessages(username) {
+  const oldCount = messages.length;
+  messages = messages.filter(message => message.username !== username);
+  if (messages.length !== oldCount) writeJson(MESSAGES_FILE, messages);
+  io.emit('messages:clear-user', username);
+}
 
 app.post('/api/register', (req, res) => {
   const username = cleanName(req.body.username);
@@ -82,6 +88,14 @@ app.post('/api/login', (req, res) => {
 
 app.post('/api/logout', requireUser, (req, res) => {
   const token = parseCookies(req.headers.cookie).session;
+  removeUserMessages(req.user.username);
+  sessions.delete(token);
+  res.setHeader('Set-Cookie', 'session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
+  res.json({ ok: true });
+});
+app.post('/api/leave', requireUser, (req, res) => {
+  const token = parseCookies(req.headers.cookie).session;
+  removeUserMessages(req.user.username);
   sessions.delete(token);
   res.setHeader('Set-Cookie', 'session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
   res.json({ ok: true });
@@ -102,6 +116,7 @@ io.use((socket, next) => {
   next();
 });
 io.on('connection', socket => {
+  let leaveTimer;
   onlineUsers.set(socket.id, socket.user.username);
   io.emit('presence', [...new Set(onlineUsers.values())]);
   socket.on('message:send', rawText => {
@@ -116,7 +131,9 @@ io.on('connection', socket => {
   socket.on('disconnect', () => {
     onlineUsers.delete(socket.id);
     io.emit('presence', [...new Set(onlineUsers.values())]);
+    leaveTimer = setTimeout(() => removeUserMessages(socket.user.username), 1500);
   });
+  socket.on('reconnect-cancel-leave', () => clearTimeout(leaveTimer));
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));

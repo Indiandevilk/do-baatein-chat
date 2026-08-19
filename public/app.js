@@ -50,7 +50,12 @@ function renderMessage(message) {
 function scrollMessages() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 function connectSocket() {
   socket = io();
+  socket.on('connect', () => socket.emit('reconnect-cancel-leave'));
   socket.on('message:new', message => { renderMessage(message); scrollMessages(); });
+  socket.on('messages:clear-user', username => {
+    if (username === currentUsername) loadMessages();
+    else [...messagesEl.querySelectorAll('.message')].filter(item => item.querySelector('.message-meta')?.textContent.startsWith(`${username} ·`)).forEach(item => item.remove());
+  });
   socket.on('presence', names => {
     const others = names.filter(name => name !== currentUsername);
     document.querySelector('#presence-text').textContent = others.length ? `${others[0]} online hain` : 'Doosre person ka intezaar hai';
@@ -75,6 +80,9 @@ document.querySelector('#logout').addEventListener('click', async () => {
   await request('/api/logout', { method: 'POST' });
   if (socket) socket.disconnect();
   chatView.classList.add('hidden'); authView.classList.remove('hidden'); authForm.reset(); setMode(false);
+});
+window.addEventListener('pagehide', () => {
+  if (currentUsername) navigator.sendBeacon('/api/leave');
 });
 (async function init() {
   try { const data = await request('/api/me'); if (data.user) showChat(data.user.username); else messagesEl.innerHTML = '<div class="empty">Login karke apni pehli baat shuru karein.</div>'; }
