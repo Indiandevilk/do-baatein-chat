@@ -47,7 +47,9 @@ function renderMessage(message) {
   const meta = document.createElement('div'); meta.className = 'message-meta'; meta.textContent = `${message.username} · ${new Date(message.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   item.append(bubble, meta); messagesEl.appendChild(item);
 }
-function scrollMessages() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+function scrollMessages() {
+  requestAnimationFrame(() => messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' }));
+}
 function connectSocket() {
   socket = io();
   socket.on('connect', () => socket.emit('reconnect-cancel-leave'));
