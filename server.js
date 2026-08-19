@@ -153,7 +153,7 @@ io.on('connection', socket => {
     const recipient = users.find(user => user.username !== socket.user.username);
     const subscription = recipient && pushSubscriptions[recipient.username];
     if (subscription && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-      webpush.sendNotification(subscription, JSON.stringify({ title: `Message from ${socket.user.username}`, body: text })).catch(error => {
+      webpush.sendNotification(subscription, JSON.stringify({ title: `${socket.user.username} is messaging you`, body: text })).catch(error => {
         if (error.statusCode === 404 || error.statusCode === 410) { delete pushSubscriptions[recipient.username]; writeJson(PUSH_FILE, pushSubscriptions); }
       });
     }

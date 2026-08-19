@@ -95,7 +95,7 @@ async function enableNotifications() {
   if (!('Notification' in window)) return;
   await setupPushNotifications();
   const permission = Notification.permission;
-  document.querySelector('#notifications').textContent = permission === 'granted' ? 'Notifications on' : 'Notifications blocked';
+  document.querySelector('#notifications').textContent = permission === 'granted' ? 'Notifications on' : 'Enable notifications';
 }
 function connectSocket() {
   socket = io();
