@@ -58,7 +58,7 @@ const sessions = new Map(Object.entries(readJson(SESSIONS_FILE, {})));
 const onlineUsers = new Map();
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, { maxHttpBufferSize: 8 * 1024 * 1024 });
 
 app.use(express.json({ limit: '20kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -168,6 +168,16 @@ io.on('connection', socket => {
     const text = String(rawText || '').trim().slice(0, 1000);
     if (!text) return;
     const message = { id: crypto.randomUUID(), username: socket.user.username, text, sentAt: new Date().toISOString() };
+    messages.push(message);
+    messages = messages.slice(-500);
+    writeJson(MESSAGES_FILE, messages);
+    io.emit('message:new', message);
+  });
+  socket.on('image:send', dataUrl => {
+    const image = String(dataUrl || '');
+    if (!/^data:image\/(jpeg|png|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) return;
+    if (Buffer.byteLength(image, 'utf8') > 5 * 1024 * 1024) return;
+    const message = { id: crypto.randomUUID(), username: socket.user.username, image, sentAt: new Date().toISOString() };
     messages.push(message);
     messages = messages.slice(-500);
     writeJson(MESSAGES_FILE, messages);

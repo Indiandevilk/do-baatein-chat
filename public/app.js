@@ -9,6 +9,7 @@ const authError = document.querySelector('#auth-error');
 const messagesEl = document.querySelector('#messages');
 const messageForm = document.querySelector('#message-form');
 const messageInput = document.querySelector('#message-input');
+const imageInput = document.querySelector('#image-input');
 let isRegistering = false;
 let socket;
 let currentUsername = '';
@@ -46,7 +47,9 @@ function renderMessage(message) {
   const empty = messagesEl.querySelector('.empty'); if (empty) empty.remove();
   const item = document.createElement('article');
   item.className = `message ${message.username === currentUsername ? 'mine' : ''}`;
-  const bubble = document.createElement('div'); bubble.className = 'bubble'; bubble.textContent = message.text;
+  const bubble = document.createElement('div'); bubble.className = 'bubble';
+  if (message.image) { const image = document.createElement('img'); image.className = 'shared-image'; image.src = message.image; image.alt = `${message.username} shared a photo`; bubble.appendChild(image); }
+  else bubble.textContent = message.text;
   const meta = document.createElement('div'); meta.className = 'message-meta'; meta.textContent = `${message.username} · ${new Date(message.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   item.append(bubble, meta); messagesEl.appendChild(item);
 }
@@ -82,6 +85,14 @@ toggleAuth.addEventListener('click', () => setMode(!isRegistering));
 messageForm.addEventListener('submit', event => {
   event.preventDefault();
   if (messageInput.value.trim() && socket) { socket.emit('message:send', messageInput.value); messageInput.value = ''; messageInput.focus(); }
+});
+imageInput.addEventListener('change', () => {
+  const file = imageInput.files[0];
+  if (!file) return;
+  if (file.size > 3.5 * 1024 * 1024) { alert('Photo 3.5 MB se chhoti honi chahiye.'); imageInput.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = () => { socket.emit('image:send', reader.result); imageInput.value = ''; };
+  reader.readAsDataURL(file);
 });
 document.querySelector('#logout').addEventListener('click', async () => {
   await request('/api/logout', { method: 'POST' });
