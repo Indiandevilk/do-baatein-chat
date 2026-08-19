@@ -26,3 +26,5 @@ The app stores users and messages in `data/`. Render's free service can lose thi
 Login sessions use a long-lived signed cookie, so a normal server update does not ask users to log in again. Only the explicit **Logout** button clears a login session. Messages stay saved when either user logs out or closes the website.
 
 Login activity is available at `/admin.html`. Set the `ADMIN_PASSWORD` environment variable in Render first. The page shows only each account's latest login time and logout time; it does not collect IP, device, password, or message details.
+
+Optional SMS login alerts use Twilio. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, and `ADMIN_PHONE` in Render. Only the username and login time are sent; enable this only with the chat users' knowledge.

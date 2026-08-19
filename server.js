@@ -3,6 +3,7 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const twilio = require('twilio');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 3000;
@@ -13,6 +14,11 @@ const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const ACTIVITY_FILE = path.join(DATA_DIR, 'login-activity.json');
 const SESSION_SECRET = process.env.SESSION_SECRET || 'do-baatein-change-this-secret';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '';
+const ADMIN_PHONE = process.env.ADMIN_PHONE || '';
+const TIME_ZONE = process.env.TIME_ZONE || 'Asia/Kolkata';
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 function readJson(file, fallback) {
@@ -86,6 +92,12 @@ function recordLogout(username) {
   loginActivity[username].logoutAt = new Date().toISOString();
   writeJson(ACTIVITY_FILE, loginActivity);
 }
+function sendLoginAlert(username) {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER || !ADMIN_PHONE) return;
+  const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+  const loginTime = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: TIME_ZONE }).format(new Date());
+  client.messages.create({ from: TWILIO_PHONE_NUMBER, to: ADMIN_PHONE, body: `Do Baatein: ${username} logged in at ${loginTime}.` }).catch(error => console.error('Login SMS failed:', error.message));
+}
 function requireAdmin(req, res, next) {
   if (!ADMIN_PASSWORD || req.headers['x-admin-password'] !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Admin access required.' });
   next();
@@ -102,6 +114,7 @@ app.post('/api/register', (req, res) => {
   writeJson(USERS_FILE, users);
   setSession(res, username);
   recordLogin(username);
+  sendLoginAlert(username);
   res.json({ username });
 });
 
@@ -111,6 +124,7 @@ app.post('/api/login', (req, res) => {
   if (!user || !verifyPassword(String(req.body.password || ''), user.password)) return res.status(401).json({ error: 'Username or password is incorrect.' });
   setSession(res, username);
   recordLogin(username);
+  sendLoginAlert(username);
   res.json({ username });
 });
 
