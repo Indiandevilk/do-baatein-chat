@@ -16,7 +16,6 @@ let currentUsername = '';
 function showError(message = '') { authError.textContent = message; }
 function setMode(register) {
   isRegistering = register;
-  authTitle.textContent = register ? 'Create your space' : 'Welcome back';
   authSubtitle.textContent = register ? 'Apna username aur password set karein.' : 'Apne account se login karein.';
   authAction.textContent = register ? 'Account banayein' : 'Login karein';
   toggleAuth.textContent = register ? 'Pehle se account hai? Login karein' : 'Naya account banayein';
