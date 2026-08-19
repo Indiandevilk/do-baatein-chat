@@ -12,6 +12,8 @@ const messageInput = document.querySelector('#message-input');
 let isRegistering = false;
 let socket;
 let currentUsername = '';
+let latestMessageTime = 0;
+let unreadCount = 0;
 
 function showError(message = '') { authError.textContent = message; }
 function setMode(register) {
@@ -35,8 +37,17 @@ function showChat(username) {
 }
 async function loadMessages() {
   const data = await request('/api/messages');
+  const savedTime = Number(localStorage.getItem(`do-baatein:last-seen:${currentUsername}`) || 0);
+  const unseen = savedTime ? data.filter(message => message.username !== currentUsername && new Date(message.sentAt).getTime() > savedTime) : [];
   messagesEl.innerHTML = '';
   data.forEach(renderMessage);
+  latestMessageTime = data.length ? new Date(data[data.length - 1].sentAt).getTime() : Date.now();
+  if (unseen.length) {
+    unreadCount += unseen.length;
+    updateNotificationLabel();
+    notifyUser(`${unseen.length} new message${unseen.length > 1 ? 's' : ''}`, `${unseen[unseen.length - 1].username} ne aapko message bheja hai.`);
+  }
+  markMessagesSeen();
   scrollMessages();
 }
 function renderMessage(message) {
@@ -50,10 +61,33 @@ function renderMessage(message) {
 function scrollMessages() {
   requestAnimationFrame(() => messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' }));
 }
+function updateNotificationLabel() {
+  document.querySelector('#notifications').textContent = unreadCount ? `Notifications (${unreadCount})` : 'Notifications';
+  document.title = unreadCount ? `(${unreadCount}) Do Baatein` : 'Do Baatein | Private chat';
+}
+function markMessagesSeen() {
+  if (currentUsername && latestMessageTime) localStorage.setItem(`do-baatein:last-seen:${currentUsername}`, String(latestMessageTime));
+  unreadCount = 0;
+  updateNotificationLabel();
+}
+function notifyUser(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') new Notification(title, { body, tag: 'do-baatein-message' });
+}
+async function enableNotifications() {
+  if (!('Notification' in window)) return;
+  const permission = await Notification.requestPermission();
+  document.querySelector('#notifications').textContent = permission === 'granted' ? 'Notifications on' : 'Notifications blocked';
+}
 function connectSocket() {
   socket = io();
   socket.on('connect', () => socket.emit('reconnect-cancel-leave'));
-  socket.on('message:new', message => { renderMessage(message); scrollMessages(); });
+  socket.on('message:new', message => {
+    renderMessage(message); latestMessageTime = new Date(message.sentAt).getTime(); scrollMessages();
+    if (message.username !== currentUsername && document.hidden) {
+      unreadCount += 1; updateNotificationLabel();
+      notifyUser('New message', `${message.username} ne aapko message bheja hai.`);
+    } else if (!document.hidden) markMessagesSeen();
+  });
   socket.on('presence', names => {
     const others = names.filter(name => name !== currentUsername);
     document.querySelector('#presence-text').textContent = others.length ? `${others[0]} online hain` : 'Doosre person ka intezaar hai';
@@ -79,6 +113,8 @@ document.querySelector('#logout').addEventListener('click', async () => {
   if (socket) socket.disconnect();
   chatView.classList.add('hidden'); authView.classList.remove('hidden'); authForm.reset(); setMode(false);
 });
+document.querySelector('#notifications').addEventListener('click', enableNotifications);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) markMessagesSeen(); });
 (async function init() {
   try { const data = await request('/api/me'); if (data.user) showChat(data.user.username); else messagesEl.innerHTML = '<div class="empty">Login karke apni pehli baat shuru karein.</div>'; }
   catch { messagesEl.innerHTML = '<div class="empty">Login karke apni pehli baat shuru karein.</div>'; }
