@@ -3,6 +3,7 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const webpush = require('web-push');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 3000;
@@ -10,7 +11,11 @@ const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const PUSH_FILE = path.join(DATA_DIR, 'push-subscriptions.json');
 const SESSION_SECRET = process.env.SESSION_SECRET || 'do-baatein-change-this-secret';
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) webpush.setVapidDetails('mailto:indiandevilk@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 function readJson(file, fallback) {
@@ -48,6 +53,7 @@ function cleanName(name) { return String(name || '').trim().toLowerCase().replac
 
 let users = readJson(USERS_FILE, []);
 let messages = readJson(MESSAGES_FILE, []);
+let pushSubscriptions = readJson(PUSH_FILE, {});
 const sessions = new Map(Object.entries(readJson(SESSIONS_FILE, {})));
 const onlineUsers = new Map();
 const app = express();
@@ -116,6 +122,13 @@ app.get('/api/me', (req, res) => {
   res.json({ user: user ? { username: user.username } : null });
 });
 app.get('/api/messages', requireUser, (req, res) => res.json(messages.slice(-200)));
+app.get('/api/push/public-key', requireUser, (req, res) => res.json({ publicKey: VAPID_PUBLIC_KEY }));
+app.post('/api/push/subscribe', requireUser, (req, res) => {
+  if (!req.body?.endpoint) return res.status(400).json({ error: 'Invalid push subscription.' });
+  pushSubscriptions[req.user.username] = req.body;
+  writeJson(PUSH_FILE, pushSubscriptions);
+  res.json({ ok: true });
+});
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 io.use((socket, next) => {
@@ -137,6 +150,13 @@ io.on('connection', socket => {
     messages = messages.slice(-500);
     writeJson(MESSAGES_FILE, messages);
     io.emit('message:new', message);
+    const recipient = users.find(user => user.username !== socket.user.username);
+    const subscription = recipient && pushSubscriptions[recipient.username];
+    if (subscription && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+      webpush.sendNotification(subscription, JSON.stringify({ title: `Message from ${socket.user.username}`, body: text })).catch(error => {
+        if (error.statusCode === 404 || error.statusCode === 410) { delete pushSubscriptions[recipient.username]; writeJson(PUSH_FILE, pushSubscriptions); }
+      });
+    }
   });
   socket.on('disconnect', () => {
     onlineUsers.delete(socket.id);

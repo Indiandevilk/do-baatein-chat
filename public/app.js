@@ -33,7 +33,25 @@ function showChat(username) {
   currentUsername = username;
   document.querySelector('#current-user').textContent = username;
   authView.classList.add('hidden'); chatView.classList.remove('hidden');
-  loadMessages(); connectSocket();
+  loadMessages(); connectSocket(); setupPushNotifications();
+}
+async function setupPushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    const data = await request('/api/push/public-key');
+    if (!data.publicKey) return;
+    if (Notification.permission === 'default') await Notification.requestPermission();
+    if (Notification.permission !== 'granted') return;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(data.publicKey) });
+    await request('/api/push/subscribe', { method: 'POST', body: JSON.stringify(subscription.toJSON()) });
+  } catch (error) { console.warn('Push notifications unavailable:', error.message); }
+}
+function urlBase64ToUint8Array(value) {
+  const padding = '='.repeat((4 - value.length % 4) % 4);
+  const raw = atob((value + padding).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(character => character.charCodeAt(0)));
 }
 async function loadMessages() {
   const data = await request('/api/messages');
@@ -75,7 +93,8 @@ function notifyUser(title, body) {
 }
 async function enableNotifications() {
   if (!('Notification' in window)) return;
-  const permission = await Notification.requestPermission();
+  await setupPushNotifications();
+  const permission = Notification.permission;
   document.querySelector('#notifications').textContent = permission === 'granted' ? 'Notifications on' : 'Notifications blocked';
 }
 function connectSocket() {
