@@ -3,7 +3,6 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const twilio = require('twilio');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 3000;
@@ -14,10 +13,8 @@ const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const ACTIVITY_FILE = path.join(DATA_DIR, 'login-activity.json');
 const SESSION_SECRET = process.env.SESSION_SECRET || 'do-baatein-change-this-secret';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '';
-const ADMIN_PHONE = process.env.ADMIN_PHONE || '';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 const TIME_ZONE = process.env.TIME_ZONE || 'Asia/Kolkata';
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -92,11 +89,12 @@ function recordLogout(username) {
   loginActivity[username].logoutAt = new Date().toISOString();
   writeJson(ACTIVITY_FILE, loginActivity);
 }
-function sendLoginAlert(username) {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER || !ADMIN_PHONE) return;
-  const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+async function sendLoginAlert(username) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
   const loginTime = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: TIME_ZONE }).format(new Date());
-  client.messages.create({ from: TWILIO_PHONE_NUMBER, to: ADMIN_PHONE, body: `Do Baatein: ${username} logged in at ${loginTime}.` }).catch(error => console.error('Login SMS failed:', error.message));
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: `Do Baatein: ${username} logged in at ${loginTime}.` }) });
+  } catch (error) { console.error('Login Telegram alert failed:', error.message); }
 }
 function requireAdmin(req, res, next) {
   if (!ADMIN_PASSWORD || req.headers['x-admin-password'] !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Admin access required.' });

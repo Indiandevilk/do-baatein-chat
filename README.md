@@ -27,4 +27,4 @@ Login sessions use a long-lived signed cookie, so a normal server update does no
 
 Login activity is available at `/admin.html`. Set the `ADMIN_PASSWORD` environment variable in Render first. The page shows only each account's latest login time and logout time; it does not collect IP, device, password, or message details.
 
-Optional SMS login alerts use Twilio. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, and `ADMIN_PHONE` in Render. Only the username and login time are sent; enable this only with the chat users' knowledge.
+Free login alerts use Telegram instead of paid SMS. Create a bot with `@BotFather`, send it one message, get your chat ID from `https://api.telegram.org/bot<TOKEN>/getUpdates`, then set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in Render. Only the username and login time are sent.
