@@ -93,7 +93,8 @@ async function sendLoginAlert(username) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
   const loginTime = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: TIME_ZONE }).format(new Date());
   try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: `Do Baatein: ${username} logged in at ${loginTime}.` }) });
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: `Do Baatein: ${username} logged in at ${loginTime}.` }) });
+    if (!response.ok) console.error('Login Telegram alert failed:', response.status);
   } catch (error) { console.error('Login Telegram alert failed:', error.message); }
 }
 function requireAdmin(req, res, next) {
