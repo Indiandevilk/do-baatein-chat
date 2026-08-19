@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const SESSION_SECRET = process.env.SESSION_SECRET || 'do-baatein-change-this-secret';
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 function readJson(file, fallback) {
@@ -29,11 +31,24 @@ function parseCookies(header = '') {
     return [part.slice(0, index).trim(), decodeURIComponent(part.slice(index + 1).trim())];
   }));
 }
+function sessionToken(username) {
+  const value = Buffer.from(username).toString('base64url');
+  const signature = crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('base64url');
+  return `${value}.${signature}`;
+}
+function signedUsername(token) {
+  if (!token) return null;
+  const [value, signature] = token.split('.');
+  if (!value || !signature) return null;
+  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('base64url');
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  try { return Buffer.from(value, 'base64url').toString(); } catch { return null; }
+}
 function cleanName(name) { return String(name || '').trim().toLowerCase().replace(/[^a-z0-9_ -]/g, '').slice(0, 24); }
 
 let users = readJson(USERS_FILE, []);
 let messages = readJson(MESSAGES_FILE, []);
-const sessions = new Map();
+const sessions = new Map(Object.entries(readJson(SESSIONS_FILE, {})));
 const onlineUsers = new Map();
 const app = express();
 const server = http.createServer(app);
@@ -44,7 +59,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 function currentUser(req) {
   const token = parseCookies(req.headers.cookie).session;
-  const username = sessions.get(token);
+  const username = sessions.get(token) || signedUsername(token);
   return users.find(user => user.username === username) || null;
 }
 function requireUser(req, res, next) {
@@ -54,15 +69,10 @@ function requireUser(req, res, next) {
   next();
 }
 function setSession(res, username) {
-  const token = crypto.randomBytes(32).toString('hex');
+  const token = sessionToken(username);
   sessions.set(token, username);
-  res.setHeader('Set-Cookie', `session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`);
-}
-function removeUserMessages(username) {
-  const oldCount = messages.length;
-  messages = messages.filter(message => message.username !== username);
-  if (messages.length !== oldCount) writeJson(MESSAGES_FILE, messages);
-  io.emit('messages:clear-user', username);
+  writeJson(SESSIONS_FILE, Object.fromEntries(sessions));
+  res.setHeader('Set-Cookie', `session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=315360000`);
 }
 
 app.post('/api/register', (req, res) => {
@@ -88,15 +98,15 @@ app.post('/api/login', (req, res) => {
 
 app.post('/api/logout', requireUser, (req, res) => {
   const token = parseCookies(req.headers.cookie).session;
-  removeUserMessages(req.user.username);
   sessions.delete(token);
+  writeJson(SESSIONS_FILE, Object.fromEntries(sessions));
   res.setHeader('Set-Cookie', 'session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
   res.json({ ok: true });
 });
 app.post('/api/leave', requireUser, (req, res) => {
   const token = parseCookies(req.headers.cookie).session;
-  removeUserMessages(req.user.username);
   sessions.delete(token);
+  writeJson(SESSIONS_FILE, Object.fromEntries(sessions));
   res.setHeader('Set-Cookie', 'session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
   res.json({ ok: true });
 });
@@ -109,14 +119,14 @@ app.get('/api/messages', requireUser, (req, res) => res.json(messages.slice(-200
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 io.use((socket, next) => {
-  const username = sessions.get(parseCookies(socket.handshake.headers.cookie).session);
+  const token = parseCookies(socket.handshake.headers.cookie).session;
+  const username = sessions.get(token) || signedUsername(token);
   const user = users.find(item => item.username === username);
   if (!user) return next(new Error('Not authenticated'));
   socket.user = user;
   next();
 });
 io.on('connection', socket => {
-  let leaveTimer;
   onlineUsers.set(socket.id, socket.user.username);
   io.emit('presence', [...new Set(onlineUsers.values())]);
   socket.on('message:send', rawText => {
@@ -131,9 +141,7 @@ io.on('connection', socket => {
   socket.on('disconnect', () => {
     onlineUsers.delete(socket.id);
     io.emit('presence', [...new Set(onlineUsers.values())]);
-    leaveTimer = setTimeout(() => removeUserMessages(socket.user.username), 1500);
   });
-  socket.on('reconnect-cancel-leave', () => clearTimeout(leaveTimer));
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));

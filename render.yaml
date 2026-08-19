@@ -6,3 +6,6 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     plan: free
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
