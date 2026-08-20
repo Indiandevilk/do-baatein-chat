@@ -28,3 +28,7 @@ Login sessions use a long-lived signed cookie, so a normal server update does no
 Login activity is available at `/admin.html`. Set the `ADMIN_PASSWORD` environment variable in Render first. The page shows only each account's latest login time and logout time; it does not collect IP, device, password, or message details.
 
 Free login alerts use Telegram instead of paid SMS. Create a bot with `@BotFather`, send it one message, get your chat ID from `https://api.telegram.org/bot<TOKEN>/getUpdates`, then set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in Render. Only the username and login time are sent.
+
+## Use it like a phone app
+
+Open the public website on Android Chrome, tap the browser menu, and choose **Add to Home screen** or **Install app**. It will open full-screen like an app while sharing the same chat server with normal browser users. Camera and microphone permissions are required for video calls.

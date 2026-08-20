@@ -1,0 +1,13 @@
+{
+  "name": "Do Baatein Private Chat",
+  "short_name": "Do Baatein",
+  "description": "Private two-person chat with photos and video calls",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#1769aa",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
