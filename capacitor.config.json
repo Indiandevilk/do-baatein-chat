@@ -1,0 +1,9 @@
+{
+  "appId": "com.indianodevilk.dobaatein",
+  "appName": "Do Baatein",
+  "webDir": "public",
+  "server": {
+    "url": "https://do-baatein-chat.onrender.com",
+    "cleartext": false
+  }
+}

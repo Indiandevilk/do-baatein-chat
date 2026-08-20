@@ -32,3 +32,16 @@ Free login alerts use Telegram instead of paid SMS. Create a bot with `@BotFathe
 ## Use it like a phone app
 
 Open the public website on Android Chrome, tap the browser menu, and choose **Add to Home screen** or **Install app**. It will open full-screen like an app while sharing the same chat server with normal browser users. Camera and microphone permissions are required for video calls.
+
+## Android APK
+
+This project includes a Capacitor Android wrapper configured to load the same Render website. Install Android Studio and Java 17, then run:
+
+```powershell
+npm install
+npm run android:add
+npm run android:sync
+npm run android:open
+```
+
+In Android Studio choose **Build -> Build Bundle(s) / APK(s) -> Build APK(s)**. The APK will use the same online chat, photo sharing, and video call server as the website.
