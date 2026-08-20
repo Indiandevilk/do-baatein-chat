@@ -10,10 +10,24 @@ const messagesEl = document.querySelector('#messages');
 const messageForm = document.querySelector('#message-form');
 const messageInput = document.querySelector('#message-input');
 const imageInput = document.querySelector('#image-input');
+const callButton = document.querySelector('#call-button');
+const callPanel = document.querySelector('#call-panel');
+const callStatus = document.querySelector('#call-status');
+const hangupButton = document.querySelector('#hangup-button');
+const incomingCall = document.querySelector('#incoming-call');
+const incomingText = document.querySelector('#incoming-text');
+const acceptCall = document.querySelector('#accept-call');
+const rejectCall = document.querySelector('#reject-call');
+const localVideo = document.querySelector('#local-video');
+const remoteVideo = document.querySelector('#remote-video');
 let isRegistering = false;
 let socket;
 let currentUsername = '';
 let latestMessageTime = 0;
+let peerConnection;
+let localStream;
+let pendingOffer;
+const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 function showError(message = '') { authError.textContent = message; }
 function setMode(register) {
@@ -71,6 +85,51 @@ function connectSocket() {
     document.querySelector('#presence-text').textContent = others.length ? `${others[0]} online hain` : 'Doosre person ka intezaar hai';
   });
   socket.on('connect_error', () => { document.querySelector('#presence-text').textContent = 'Connection issue'; });
+  socket.on('call:incoming', data => {
+    pendingOffer = data.offer;
+    incomingText.textContent = `${data.caller} is calling`;
+    incomingCall.classList.remove('hidden');
+    callPanel.classList.remove('hidden');
+  });
+  socket.on('call:answered', async data => { await peerConnection?.setRemoteDescription(data.answer); callStatus.textContent = 'Connected'; });
+  socket.on('call:ice-candidate', async data => { if (peerConnection && data.candidate) await peerConnection.addIceCandidate(data.candidate); });
+  socket.on('call:rejected', () => endCall('Call rejected'));
+  socket.on('call:ended', () => endCall('Call ended'));
+}
+async function createPeerConnection() {
+  peerConnection = new RTCPeerConnection(rtcConfig);
+  peerConnection.onicecandidate = event => { if (event.candidate) socket.emit('call:ice-candidate', { candidate: event.candidate }); };
+  peerConnection.ontrack = event => { remoteVideo.srcObject = event.streams[0]; };
+  peerConnection.onconnectionstatechange = () => { if (['failed', 'disconnected'].includes(peerConnection.connectionState)) endCall('Connection lost'); };
+  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  localVideo.srcObject = localStream;
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+}
+async function startCall() {
+  try {
+    await createPeerConnection();
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    socket.emit('call:invite', { offer });
+    callPanel.classList.remove('hidden'); callStatus.textContent = 'Calling...';
+  } catch { endCall('Camera/mic permission required'); }
+}
+async function acceptIncomingCall() {
+  try {
+    await createPeerConnection();
+    await peerConnection.setRemoteDescription(pendingOffer);
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    socket.emit('call:answer', { answer });
+    incomingCall.classList.add('hidden'); callStatus.textContent = 'Connected';
+  } catch { endCall('Camera/mic permission required'); }
+}
+function endCall(status = 'Video call') {
+  if (localStream) localStream.getTracks().forEach(track => track.stop());
+  if (peerConnection) peerConnection.close();
+  localStream = null; peerConnection = null; pendingOffer = null;
+  localVideo.srcObject = null; remoteVideo.srcObject = null;
+  callPanel.classList.add('hidden'); incomingCall.classList.add('hidden'); callStatus.textContent = status;
 }
 authForm.addEventListener('submit', async event => {
   event.preventDefault(); showError();
@@ -99,6 +158,10 @@ document.querySelector('#logout').addEventListener('click', async () => {
   if (socket) socket.disconnect();
   chatView.classList.add('hidden'); authView.classList.remove('hidden'); authForm.reset(); setMode(false);
 });
+callButton.addEventListener('click', startCall);
+hangupButton.addEventListener('click', () => { socket.emit('call:hangup'); endCall(); });
+acceptCall.addEventListener('click', acceptIncomingCall);
+rejectCall.addEventListener('click', () => { socket.emit('call:reject'); endCall('Call rejected'); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) markMessagesSeen(); });
 (async function init() {
   try { const data = await request('/api/me'); if (data.user) showChat(data.user.username); else messagesEl.innerHTML = '<div class="empty">Login karke apni pehli baat shuru karein.</div>'; }

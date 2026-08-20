@@ -183,6 +183,11 @@ io.on('connection', socket => {
     writeJson(MESSAGES_FILE, messages);
     io.emit('message:new', message);
   });
+  socket.on('call:invite', data => socket.broadcast.emit('call:incoming', { offer: data.offer, caller: socket.user.username }));
+  socket.on('call:answer', data => socket.broadcast.emit('call:answered', { answer: data.answer }));
+  socket.on('call:ice-candidate', data => socket.broadcast.emit('call:ice-candidate', { candidate: data.candidate }));
+  socket.on('call:reject', () => socket.broadcast.emit('call:rejected'));
+  socket.on('call:hangup', () => socket.broadcast.emit('call:ended'));
   socket.on('disconnect', () => {
     onlineUsers.delete(socket.id);
     io.emit('presence', [...new Set(onlineUsers.values())]);

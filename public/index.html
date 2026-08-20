@@ -29,9 +29,10 @@
     <section id="chat-view" class="chat-layout hidden">
       <header class="topbar">
         <div class="brand"><div class="brand-mark small">DB</div><strong>Do Baatein</strong></div>
-        <div class="user-menu"><span class="online-dot"></span><span id="current-user"></span><button id="logout" class="icon-btn" title="Logout">Logout</button></div>
+        <div class="user-menu"><span class="online-dot"></span><span id="current-user"></span><button id="call-button" class="icon-btn call-button" type="button">Video call</button><button id="logout" class="icon-btn" title="Logout">Logout</button></div>
       </header>
       <div class="chat-main">
+        <section id="call-panel" class="call-panel hidden"><div class="call-heading"><strong id="call-status">Video call</strong><button id="hangup-button" class="hangup-button" type="button">End call</button></div><div class="video-grid"><video id="remote-video" autoplay playsinline></video><video id="local-video" autoplay muted playsinline></video></div><div id="incoming-call" class="incoming-call hidden"><span id="incoming-text"></span><button id="accept-call" class="accept-button" type="button">Accept</button><button id="reject-call" class="reject-button" type="button">Reject</button></div></section>
         <section class="conversation"><div class="conversation-head"><div><h2>Chat</h2><span id="presence-text">Connecting...</span></div></div><div id="messages" class="messages"></div><div class="photo-row"><label class="image-btn" title="Photo choose karein">Photo bhejein<input id="image-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden /></label></div><form id="message-form" class="composer"><input id="message-input" autocomplete="off" maxlength="1000" placeholder="Message likhein..." /><button class="send-btn" title="Send" type="submit">Send</button></form></section>
       </div>
     </section>
