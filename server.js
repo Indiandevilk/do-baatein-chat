@@ -65,7 +65,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 function currentUser(req) {
   const token = parseCookies(req.headers.cookie).session;
-  const username = sessions.get(token) || signedUsername(token);
+  const username = sessions.get(token);
   return users.find(user => user.username === username) || null;
 }
 function requireUser(req, res, next) {
@@ -79,6 +79,10 @@ function setSession(res, username) {
   sessions.set(token, username);
   writeJson(SESSIONS_FILE, Object.fromEntries(sessions));
   res.setHeader('Set-Cookie', `session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=315360000`);
+}
+function clearUserMessages(username) {
+  messages = messages.filter(message => message.username !== username);
+  writeJson(MESSAGES_FILE, messages);
 }
 function recordLogin(username) {
   loginActivity[username] = { loginAt: new Date().toISOString(), logoutAt: null };
@@ -131,6 +135,7 @@ app.post('/api/login', (req, res) => {
 app.post('/api/logout', requireUser, (req, res) => {
   const token = parseCookies(req.headers.cookie).session;
   recordLogout(req.user.username);
+  clearUserMessages(req.user.username);
   sessions.delete(token);
   writeJson(SESSIONS_FILE, Object.fromEntries(sessions));
   res.setHeader('Set-Cookie', 'session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
@@ -139,6 +144,7 @@ app.post('/api/logout', requireUser, (req, res) => {
 app.post('/api/leave', requireUser, (req, res) => {
   const token = parseCookies(req.headers.cookie).session;
   recordLogout(req.user.username);
+  clearUserMessages(req.user.username);
   sessions.delete(token);
   writeJson(SESSIONS_FILE, Object.fromEntries(sessions));
   res.setHeader('Set-Cookie', 'session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
@@ -155,7 +161,7 @@ app.get('/api/admin/login-activity', requireAdmin, (req, res) => res.json(loginA
 
 io.use((socket, next) => {
   const token = parseCookies(socket.handshake.headers.cookie).session;
-  const username = sessions.get(token) || signedUsername(token);
+  const username = sessions.get(token);
   const user = users.find(item => item.username === username);
   if (!user) return next(new Error('Not authenticated'));
   socket.user = user;

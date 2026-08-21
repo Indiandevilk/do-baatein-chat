@@ -156,12 +156,16 @@ imageInput.addEventListener('change', () => {
 document.querySelector('#logout').addEventListener('click', async () => {
   await request('/api/logout', { method: 'POST' });
   if (socket) socket.disconnect();
+  currentUsername = '';
   chatView.classList.add('hidden'); authView.classList.remove('hidden'); authForm.reset(); setMode(false);
 });
 callButton.addEventListener('click', startCall);
 hangupButton.addEventListener('click', () => { socket.emit('call:hangup'); endCall(); });
 acceptCall.addEventListener('click', acceptIncomingCall);
 rejectCall.addEventListener('click', () => { socket.emit('call:reject'); endCall('Call rejected'); });
+window.addEventListener('pagehide', () => {
+  if (currentUsername) navigator.sendBeacon('/api/leave');
+});
 document.addEventListener('visibilitychange', () => { if (!document.hidden) markMessagesSeen(); });
 (async function init() {
   try { const data = await request('/api/me'); if (data.user) showChat(data.user.username); else messagesEl.innerHTML = '<div class="empty">Login karke apni pehli baat shuru karein.</div>'; }
