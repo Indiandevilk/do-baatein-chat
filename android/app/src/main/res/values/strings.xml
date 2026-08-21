@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Do Baatein</string>
-    <string name="title_activity_main">Do Baatein</string>
+    <string name="app_name">Study Time</string>
+    <string name="title_activity_main">Study Time</string>
     <string name="package_name">com.indianodevilk.dobaatein</string>
     <string name="custom_url_scheme">com.indianodevilk.dobaatein</string>
 </resources>

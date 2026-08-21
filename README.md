@@ -1,4 +1,4 @@
-# Do Baatein
+# Study Time
 
 Private two-person realtime chat with username/password login.
 

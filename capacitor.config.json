@@ -1,6 +1,6 @@
 {
   "appId": "com.indianodevilk.dobaatein",
-  "appName": "Do Baatein",
+  "appName": "Study Time",
   "webDir": "public",
   "server": {
     "url": "https://do-baatein-chat.onrender.com",

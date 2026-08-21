@@ -1,6 +1,6 @@
 {
-  "name": "Do Baatein Private Chat",
-  "short_name": "Do Baatein",
+  "name": "Study Time Private Chat",
+  "short_name": "Study Time",
   "description": "Private two-person chat with photos and video calls",
   "start_url": "/",
   "display": "standalone",
